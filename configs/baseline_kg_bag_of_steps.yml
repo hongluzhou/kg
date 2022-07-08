@@ -1,0 +1,138 @@
+# -- Project settings:
+exp_name: baseline
+notes: Baseline | Bag of Steps | Step Classification (No background class) | Only Step Description Feats
+project: ginst
+entity: hongluzhou
+
+
+# -- Dataset settings:
+external_knowledge_ready: False
+external_knowledge_version: bag_of_steps_only_step_node_desciption_feats
+step_nodes_formed: True
+segment_wikistep_sim_scores_n_ready: True
+segment_wikistep_sim_scores_v_ready: True
+
+# ---- External knowledge (WikiHow):
+wikihow_dir: /export/home/code/ginst/wikihow/WikiHow-DistantSupervision
+# /export/home/code/ginst/wikihow/WikiHow-Complete/WikiHow-Dataset
+wikihow_version: wikihow_subset
+
+step_des_feats_mpnet_path: /export/home/code/ginst/mpnet/sentence_clustering/wikihow_headline_subset_embeddings.npy
+step_des_feats_s3d_path: //export/home/data/wikihow/wikihow_subset/s3d_text_feat/step_embeddings.pickle
+
+node2step_path: /export/home/data/wikihow/wikihow_subset/node2step.pickle
+step2node_path: /export/home/data/wikihow/wikihow_subset/step2node.pickle
+step_clustering_linkage: single
+step_clustering_distance_thresh: 0.09
+step_clustering_affinity: cosine
+
+segment_feat_dir: /export/home/data/howto100m/feats
+
+video_ID_path:  /export/home/code/ginst/build_graph/data/ht100m_subset_train_set_valid_video_IDs.npy
+
+frame_embeddings_path: /export/home/code/ginst/build_graph/data/ht100m_subset_train_set_clip9s_frame_embeddings.npy
+frame_embeddings_lookup_table_path: /export/home/code/ginst/build_graph/data/ht100m_subset_train_set_clip9s_frame_embeddings_lookup_table.pickle
+
+narration_embeddings_path: /export/home/code/ginst/build_graph/data/ht100m_subset_train_set_clip9s_narration_embeddings.npy
+narration_lookup_table_path: /export/home/code/ginst/build_graph/data/ht100m_subset_train_set_clip9s_narration_embeddings_lookup_table.pickle
+
+segment_wikistep_sim_scores_n_path: /export/home/data/howto100m/segment_wikihow_subset_step_sim_scores_n
+segment_wikistep_sim_scores_v_path: /export/home/data/howto100m/segment_wikihow_subset_step_sim_scores_v
+
+find_matched_segments_for_steps_using_narration_thresh: -100000
+# 0.7
+find_matched_segments_for_steps_using_narration_topK: 1
+# 3
+
+find_matched_segments_for_steps_using_video_thresh: -100000
+# 9
+find_matched_segments_for_steps_using_video_topK: 1
+# 3
+
+
+adapter_train_dataset_name: HowTo100M-subset_9.6s-visual-segments
+downstream_dataset_name: CrossTask
+cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
+cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+
+
+
+
+# -- Model settings:
+# ---- Language pretrained model:
+model_language_pretrained_name: sentence-transformers/paraphrase-mpnet-base-v2
+# ---- Video pretrained model:
+model_video_pretrained_dim: 512
+
+# ---- Adapter 
+adapter_name: mlp_with_skip
+bottleneck_dim: 128
+adapter_refined_feat_dim: 768
+model_adapter_num_classes: 10588
+# ---- Adapter training settings
+adapter_batch_size: 256
+adapter_num_epochs: 100
+# 3
+adapter_evaluate_freq: 5
+# 1
+adapter_batch_train_log_freq: 2000
+# 2
+adapter_optimizer: 'adam'
+adapter_learning_rate: 0.0001
+adapter_weight_decay: 0.001
+adapter_lr_warm_up: False
+adapter_warmup_steps: 5000
+# ---- Task head
+task_cls_head_name: transformer_one_layer
+model_task_cls_tx_hidden_dim: 768
+model_task_cls_tx_nhead: 12
+model_task_cls_tx_dim_feedforward: 1024
+model_task_cls_tx_dropout: 0
+model_task_cls_tx_activation: relu
+model_task_cls_num_classes: 83
+time_position_embedding_type: absolute_learned_1D
+max_time_ids_embed: 500
+# ---- Task head training settings
+task_head_batch_size: 16
+task_head_num_epochs: 100
+# 2
+task_head_batch_train_log_freq: 1000000
+# 50, a sufficiently large number means no log at all
+task_head_batch_test_log_freq: 1000000
+# 20, a sufficiently large number means no log at all
+task_head_optimizer: 'adam'
+task_head_learning_rate: 0.0001
+task_head_weight_decay: 0.001
+task_head_lr_warm_up: False
+task_head_warmup_steps: 5000
+
+
+# -- Learning objectives settings:
+train_adapter_objective: baseline_kg-no-edges-bag-of-steps_step-cls-no_background
+
+
+# -- General settings:
+seed: -1
+# seed is -1 means random, otherwise put a seed number that is greater than 0
+cudnn_benchmark: True
+
+
+# -- Runtime settings:
+num_workers: 80
+# num_workers -1 will dynamically compute the number of available workers
+gpu:
+  - 0
+  - 1
+  - 2
+  - 3 
+  - 4
+  - 5
+  - 6
+  - 7
+  
+  
+# -- Output settings:
+checkpoint_dir: ./output_checkpoints/baseline_kg-no-edges-bag-of-steps/
+log_dir: ./output_logs/
+
+

@@ -1,0 +1,5 @@
+__pycache__
+.ipynb_checkpoints
+output_checkpoints
+output_logs
+wandb
