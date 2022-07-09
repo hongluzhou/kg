@@ -92,13 +92,13 @@ def main_train_adapter(args):
     
     # Define adapter model
     adapter_model = create_model(args, logger, args.adapter_name)
-    adapter_model = nn.DataParallel(adapter_model, device_ids=args.gpu).cuda()
+    adapter_model = nn.DataParallel(adapter_model).to(args.device)
     adapter_model_n_parameters = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
     logger.info('number of params is {} for < adapter > training model'.format(adapter_model_n_parameters))
     
     
     # Define adapter criterion
-    adapter_criterion = torch.nn.CrossEntropyLoss().cuda()
+    adapter_criterion = torch.nn.CrossEntropyLoss().to(args.device)
 
     
     # Define adapter optimizer
@@ -128,6 +128,7 @@ def main_train_adapter(args):
     best_acc = -1
     best_adapter_epoch = -1
     best_task_head_epoch = -1
+    adapter_early_stop_counter= 0
     ##################################################################################################################
     for adapter_epoch in range(1, args.adapter_num_epochs + 1):
         
@@ -161,12 +162,12 @@ def main_train_adapter(args):
             
             # Define task head model
             task_head_model = create_model(args, logger, args.task_cls_head_name)
-            task_head_model = nn.DataParallel(task_head_model, device_ids=args.gpu).cuda()
+            task_head_model = nn.DataParallel(task_head_model).to(args.device)
             task_head_model_n_parameters = sum(p.numel() for p in task_head_model.parameters() if p.requires_grad)
             logger.info('number of params is {} for < task head > training model'.format(task_head_model_n_parameters))
     
             # Define task head criterion
-            task_head_criterion = torch.nn.CrossEntropyLoss().cuda()
+            task_head_criterion = torch.nn.CrossEntropyLoss().to(args.device)
 
             # Define task head optimizer
             if args.task_head_optimizer == 'adam':
@@ -191,6 +192,7 @@ def main_train_adapter(args):
             training_task_head_start_time = time.time()
             best_acc_this_adapter_epoch = -1
             best_task_epoch_this_adapter_epoch = -1
+            task_head_early_stop_counter = 0
             ##################################################################################################################
             for task_head_epoch in range(1, args.task_head_num_epochs + 1):
         
@@ -227,7 +229,8 @@ def main_train_adapter(args):
                     task_head_epoch, adapter_epoch, round(time.time() - test_task_head_start_time, 2)))
                 logger.info('-'*60)
                 
-                if test_task_head_acc > best_acc_this_adapter_epoch:
+                task_head_has_improved = test_task_head_acc > best_acc_this_adapter_epoch
+                if task_head_has_improved:
                     best_acc_this_adapter_epoch = test_task_head_acc
                     best_task_epoch_this_adapter_epoch = task_head_epoch
                     
@@ -240,11 +243,21 @@ def main_train_adapter(args):
                 #     round(best_acc, 2), best_adapter_epoch))
                 # logger.info('+'*70)
                 logger.info('-'*60)
+                
+                if task_head_has_improved:
+                    task_head_early_stop_counter = 0
+                else:
+                    task_head_early_stop_counter += 1
+                    if task_head_early_stop_counter == args.task_head_early_stop_patience:
+                        logger.info("Early stopping the < task head > model")
+                        break
                     
             logger.info('+'*90)
             logger.info("!!! Finished training and testing < task head > for all epochs, took {} seconds".format(
-                round(time.time() - training_task_head_start_time, 2)))  
-            if best_acc_this_adapter_epoch > best_acc:
+                round(time.time() - training_task_head_start_time, 2))) 
+            
+            adapter_has_improved = best_acc_this_adapter_epoch > best_acc
+            if adapter_has_improved:
                 best_acc = best_acc_this_adapter_epoch
                 best_task_head_epoch = best_task_epoch_this_adapter_epoch
                 best_adapter_epoch = adapter_epoch
@@ -265,6 +278,14 @@ def main_train_adapter(args):
             )
             logger.info('+'*90)
             logger.info("\n")
+            
+            if adapter_has_improved:
+                adapter_early_stop_counter = 0
+            else:
+                adapter_early_stop_counter += 1
+                if adapter_early_stop_counter == args.adapter_early_stop_patience:
+                    logger.info("Early stopping the < adapter > model")
+                    break
             
         # finished evaluating adapter at this epoch
         
@@ -317,7 +338,7 @@ def train_adapter_for_one_epoch(
         pred_logits_this_batch = model(segment_video_feat)
         
         # measure accuracy and record loss 
-        targets_thisbatch = target_classid.to(pred_logits_this_batch.device)
+        targets_thisbatch = target_classid.to(args.device)
         loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
         acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
         
@@ -380,7 +401,7 @@ def train_task_head_for_one_epoch(
         pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
         
         # measure accuracy and record loss 
-        targets_thisbatch = target_classid.to(pred_logits_this_batch.device)
+        targets_thisbatch = target_classid.to(args.device)
         loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
         acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
         
@@ -442,7 +463,7 @@ def test_task_head(
         pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
         
         # measure accuracy and record loss 
-        targets_thisbatch = target_classid.to(pred_logits_this_batch.device)
+        targets_thisbatch = target_classid.to(args.device)
         loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
         acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
         
@@ -468,15 +489,6 @@ def test_task_head(
             
     return acc.avg
     
-        
-
-def main_train_task_head(args):
-    return
-
-
-def main_test_task_head(args):
-    return
-
 
 
 if __name__ == '__main__':
@@ -486,12 +498,7 @@ if __name__ == '__main__':
     if args.mode == "train_adapter":
         main_train_adapter(args)
         
-    elif args.mode == "train_task_head":
-        main_train_task_head(args)
-        
-    elif args.mode == "test_task_head":
-        main_test_task_head(args)
-        
+         
     else:
         print("Wrong command mode!")
         os._exit(0)

@@ -17,8 +17,8 @@ def get_args_parser():
     ###############################################
     # Create parser for the train_adapter command #
     ###############################################
-    train_adapter_parser = subparsers.add_parser('train_adapter')
-    train_adapter_parser.add_argument('--mode', type=str, default="train_adapter")
+    train_adapter_parser = subparsers.add_parser('train_task_head')
+    train_adapter_parser.add_argument('--mode', type=str, default="train_task_head")
     train_adapter_parser.add_argument('--cfg', type=str, default="config/config.yml",
                                       help="config file path")
     train_adapter_parser.add_argument('--use_wandb', type=int, default=0,
@@ -82,8 +82,9 @@ def get_args_parser():
     ###############################################
     if args.num_workers == -1:
         args.num_workers = torch.get_num_threads() - 1
-    
+        
     args.device = torch.device(args.device)
+        
         
     ################
     # Create paths #

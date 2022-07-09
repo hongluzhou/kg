@@ -170,7 +170,7 @@ class PositionEmbeddingFixedSine_2D(nn.Module):
                 Mask is None means images in this batch share the same size.
         """
         if mask is None:
-            mask = torch.zeros((batch_size, num_positions_h, num_positions_w)).type(torch.ByteTensor).cuda()
+            mask = torch.zeros((batch_size, num_positions_h, num_positions_w)).type(torch.ByteTensor).to(device)
         
         not_mask = ~mask
         y_embed = not_mask.cumsum(1, dtype=torch.float32)

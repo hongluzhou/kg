@@ -8,7 +8,10 @@ import pdb
 def create_model(args, logger, model_name):
     
     if model_name == 'mlp_with_skip':
-        from models.adapter_mlp_with_skip import Adapter
+        from models.adapter_mlp_with_skip_connect import Adapter
+        model = Adapter(args, logger)
+    elif model_name == 'mlp_without_skip':
+        from models.adapter_mlp import Adapter
         model = Adapter(args, logger)
     elif model_name == 'transformer_one_layer':
         from models.task_head_task_cls import Task_Head

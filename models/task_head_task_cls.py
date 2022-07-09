@@ -56,7 +56,7 @@ class Task_Head(nn.Module):
         """
         B = video_feats.shape[0]
         T = video_feats.shape[1]
-        device = video_feats.device
+        device = self.args.device
         
         # self.long_term_model
         
@@ -75,7 +75,7 @@ class Task_Head(nn.Module):
       
         tx_updated_sequence = self.long_term_model(
             torch.cat([CLS, video_feats + time_seq], dim=1).transpose(0, 1),
-            src_key_padding_mask = torch.cat([torch.zeros((B, 1)).bool().cuda(), video_mask], dim=1)
+            src_key_padding_mask = torch.cat([torch.zeros((B, 1)).bool().to(device), video_mask], dim=1)
         )
         
         fine_cls = tx_updated_sequence[0]

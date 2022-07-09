@@ -1,0 +1,62 @@
+# -- Project settings:
+exp_name: baseline
+notes: Baseline | No Adapter
+project: ginst
+entity: hongluzhou
+
+
+# -- Dataset settings:
+need_external_knowledge: False
+downstream_dataset_name: CrossTask
+cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
+cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+
+
+
+
+# -- Model settings:
+# ---- Video pretrained model:
+model_video_pretrained_dim: 512
+
+# ---- Task head
+task_cls_head_name: transformer_one_layer
+model_task_cls_tx_hidden_dim: 512
+model_task_cls_tx_nhead: 8
+model_task_cls_tx_dim_feedforward: 1024
+model_task_cls_tx_dropout: 0
+model_task_cls_tx_activation: relu
+model_task_cls_num_classes: 83
+time_position_embedding_type: absolute_learned_1D
+max_time_ids_embed: 500
+# ---- Task head training settings
+task_head_batch_size: 16
+task_head_num_epochs: 100
+# 2
+task_head_early_stop_patience: 20
+task_head_batch_train_log_freq: 1000000
+# 50, a sufficiently large number means no log at all
+task_head_batch_test_log_freq: 1000000
+# 20, a sufficiently large number means no log at all
+task_head_optimizer: 'adam'
+task_head_learning_rate: 0.0001
+task_head_weight_decay: 0.001
+task_head_lr_warm_up: False
+task_head_warmup_steps: 5000
+
+
+# -- General settings:
+seed: -1
+# seed is -1 means random, otherwise put a seed number that is greater than 0
+cudnn_benchmark: True
+
+
+# -- Runtime settings:
+num_workers: 10
+# num_workers -1 will dynamically compute the number of available workers
+device: cuda
+  
+# -- Output settings:
+checkpoint_dir: ./output_checkpoints/baseline_no-adatper
+log_dir: ./output_logs/
+
+

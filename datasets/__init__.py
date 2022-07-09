@@ -19,7 +19,7 @@ from torchvision.transforms import Compose, ToTensor, Normalize
 
 def return_dataset(args, logger, dataset_name, dataset_split='train'):
     
-    if not args.external_knowledge_ready:
+    if args.need_external_knowledge and not args.external_knowledge_ready:
         from datasets.build_kg_no_edges import obtain_external_knowledge
         obtain_external_knowledge(args, logger)
 
