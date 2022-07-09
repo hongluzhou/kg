@@ -114,7 +114,7 @@ def main_train_task_head(args):
     logger.info('-'*60)
     training_task_head_start_time = time.time()
     best_acc = -1
-    best_task_epoch = -1
+    best_task_head_epoch = -1
     task_head_early_stop_counter = 0
     ##################################################################################################################
     for task_head_epoch in range(1, args.task_head_num_epochs + 1):
@@ -129,7 +129,7 @@ def main_train_task_head(args):
         # --- train task head for one epoch
         ###################################
         train_task_head_for_one_epoch_start_time = time.time()
-        train_task_head_for_one_epoch(
+        train_task_head_acc, train_task_head_loss = train_task_head_for_one_epoch(
             args, logger, 
             downstream_train_loader, task_head_model,
             task_head_criterion, task_head_optimizer, task_head_scheduler, 
@@ -142,7 +142,7 @@ def main_train_task_head(args):
         # --- test task head
         #####################
         test_task_head_start_time = time.time()
-        test_task_head_acc = test_task_head( 
+        test_task_head_acc, test_task_head_loss = test_task_head( 
             args, logger, 
             downstream_test_loader, task_head_model, task_head_criterion, 
             task_head_epoch)
@@ -153,7 +153,7 @@ def main_train_task_head(args):
         task_head_has_improved = test_task_head_acc > best_acc
         if task_head_has_improved:
             best_acc = test_task_head_acc
-            best_task_epoch = task_head_epoch
+            best_task_head_epoch = task_head_epoch
             
             
             # save the task head if it is the best so far
@@ -172,17 +172,19 @@ def main_train_task_head(args):
         logger.info("Current Downstream Result (task_head_epoch-{}):".format(task_head_epoch))
         logger.info("Acc of this task head epoch: {}".format(round(test_task_head_acc, 2)))
         logger.info("Best acc so far: {} (@task_head_epoch-{})".format(
-            round(best_task_epoch, 2), best_task_epoch))
+            round(best_task_head_epoch, 2), best_task_head_epoch))
         # logger.info('+'*70)
         logger.info('-'*60)
         
         if args.use_wandb:
             wandb.log(
                 {
-                    "task_head_test_acc": best_acc,
-                    "task_head_test_acc_epoch": best_task_epoch,
-                    "best_acc": best_acc,
-                    "best_task_head_epoch": best_task_head_epoch
+                    "train_acc": train_task_head_acc,
+                    "train_loss": train_task_head_loss,
+                    "test_acc": test_task_head_acc,
+                    "test_loss": test_task_head_loss,
+                    "best_test_acc": best_acc,
+                    "best_test_acc_epoch": best_task_head_epoch
                 },
                 step=task_head_epoch
             )
@@ -255,7 +257,7 @@ def train_task_head_for_one_epoch(
                             # batch_time=batch_time, data_time=data_time, 
                             loss=loss, acc=acc))
     
-    return
+    return acc.avg, loss.avg
     
 
 @torch.no_grad()
@@ -305,7 +307,7 @@ def test_task_head(
                             loss=loss, acc=acc))
 
             
-    return acc.avg
+    return acc.avg, loss.avg
     
 
 
