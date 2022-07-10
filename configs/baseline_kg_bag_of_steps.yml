@@ -67,18 +67,19 @@ model_video_pretrained_dim: 512
 
 # ---- Adapter 
 adapter_name: mlp_with_skip
-skip_connection_refined_feat_ratio: 0.5
+skip_connection_refined_feat_ratio: 1.0
 bottleneck_dim: 128
 adapter_refined_feat_dim: 512
 model_adapter_num_classes: 10588
 # ---- Adapter training settings
 adapter_batch_size: 256
-adapter_num_epochs: 100
+adapter_num_epochs: 500
 # 3
-adapter_early_stop_patience: 5
-# adapter_early_stop_patience means how may evaluation intervals will be used as patience
+adapter_evaluate_first_epoch: 50
 adapter_evaluate_freq: 5
 # 1
+adapter_early_stop_patience: 10
+# adapter_early_stop_patience means how may evaluation intervals will be used as patience
 adapter_batch_train_log_freq: 2000
 # 2
 adapter_optimizer: 'adam'
@@ -99,7 +100,7 @@ time_position_embedding_type: absolute_learned_1D
 max_time_ids_embed: 500
 # ---- Task head training settings
 task_head_batch_size: 16
-task_head_num_epochs: 100
+task_head_num_epochs: 500
 # 2
 task_head_early_stop_patience: 20
 task_head_batch_train_log_freq: 1000000

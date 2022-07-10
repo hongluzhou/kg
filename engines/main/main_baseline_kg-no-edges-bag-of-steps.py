@@ -155,7 +155,7 @@ def main_train_adapter(args):
         ################################
         # --- evaluate adatper at this epoch
         ################################
-        if adapter_epoch == 1 or adapter_epoch % args.adapter_evaluate_freq == 0:
+        if adapter_epoch >= args.adapter_evaluate_first_epoch and adapter_epoch % args.adapter_evaluate_freq == 0:
 
             adapter_model.eval()
             adapter_criterion.eval()

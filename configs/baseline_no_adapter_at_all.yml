@@ -30,7 +30,7 @@ time_position_embedding_type: absolute_learned_1D
 max_time_ids_embed: 500
 # ---- Task head training settings
 task_head_batch_size: 16
-task_head_num_epochs: 100
+task_head_num_epochs: 500
 # 2
 task_head_early_stop_patience: 20
 task_head_batch_train_log_freq: 1000000
