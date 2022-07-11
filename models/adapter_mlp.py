@@ -14,6 +14,8 @@ class Adapter(nn.Module):
     def __init__(self, args, logger):
         super(Adapter, self).__init__()
         
+        check_adapter_objective(args, logger)
+        
         self.args = args
         self.logger = logger
         
@@ -28,8 +30,8 @@ class Adapter(nn.Module):
         
         self.classifier = build_mlp(
             input_dim=args.adapter_refined_feat_dim, 
-            hidden_dims=[args.model_adapter_num_classes//4, args.model_adapter_num_classes//2], 
-            output_dim=args.model_adapter_num_classes)
+            hidden_dims=[args.adapter_num_classes//4, args.adapter_num_classes//2], 
+            output_dim=args.adapter_num_classes)
         
         
         

@@ -290,19 +290,29 @@ def main_train_adapter(args):
         # finished evaluating adapter at this epoch
         
         if args.use_wandb:
-            wandb.log(
-                {
-                    "adapter_epoch": adapter_epoch,
-                    "adapter_train_loss": adapter_loss,
-                    "adapter_train_acc": adapter_acc,
-                    "task_head_test_acc": best_acc_this_adapter_epoch,
-                    "task_head_test_acc_epoch": best_task_epoch_this_adapter_epoch,
-                    "best_acc": best_acc,
-                    "best_adapter_epoch": best_adapter_epoch,
-                    "best_task_head_epoch": best_task_head_epoch
-                },
-            step=adapter_epoch
-        )
+            if adapter_epoch >= args.adapter_evaluate_first_epoch:
+                wandb.log(
+                    {
+                        "adapter_epoch": adapter_epoch,
+                        "adapter_train_loss": adapter_loss,
+                        "adapter_train_acc": adapter_acc,
+                        "task_head_test_acc": best_acc_this_adapter_epoch,
+                        "task_head_test_acc_epoch": best_task_epoch_this_adapter_epoch,
+                        "best_acc": best_acc,
+                        "best_adapter_epoch": best_adapter_epoch,
+                        "best_task_head_epoch": best_task_head_epoch
+                    },
+                    step=adapter_epoch
+                )
+            else:
+                wandb.log(
+                    {
+                        "adapter_epoch": adapter_epoch,
+                        "adapter_train_loss": adapter_loss,
+                        "adapter_train_acc": adapter_acc
+                    },
+                    step=adapter_epoch
+                )
 
     logger.info('\n\n\n' + '#'*90)       
     logger.info("Finished training and testing < adapter > for all epochs, took {} seconds".format(

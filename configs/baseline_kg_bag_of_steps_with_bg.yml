@@ -1,6 +1,6 @@
 # -- Project settings:
 exp_name: baseline
-notes: Baseline | Bag of Steps | Step Classification (Without background class) | Only Step Description Feats
+notes: Baseline | Bag of Steps | Step Classification (With background class) | Only Step Description Feats
 project: ginst
 entity: hongluzhou
 
@@ -68,17 +68,16 @@ model_video_pretrained_dim: 512
 # ---- Adapter 
 adapter_name: mlp_with_skip
 # {mlp_without_skip | mlp_with_skip}
-skip_connection_refined_feat_ratio: 1.0
-# skip_connection_refined_feat_ratio should be a value in [0, 1]
+skip_connection_refined_feat_ratio: 0.2
 bottleneck_dim: 128
 adapter_refined_feat_dim: 512
 # ---- Adapter objective settings
 adapter_pseudo_label_form: step_narraion_matching_mpnet 
 # {step_narraion_matching_mpnet | step_video_matching_s3d_text}
-adapter_objective: step_cls_without_bg
+adapter_objective: step_cls_with_bg
 # {step_cls_without_bg | step_cls_with_bg}
-# bg_cls_pseudo_label_threshold: 0.5
-adapter_num_classes: 10588
+bg_cls_pseudo_label_threshold: 0.5
+adapter_num_classes: 10589
 # ---- Adapter training settings
 adapter_batch_size: 256
 adapter_num_epochs: 1000
