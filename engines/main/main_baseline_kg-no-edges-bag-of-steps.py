@@ -238,7 +238,7 @@ def main_train_adapter(args):
                 logger.info("Current Downstream Result (task_head_epoch-{} adapter_epoch-{}):".format(task_head_epoch, adapter_epoch))
                 logger.info("Acc of this task head epoch: {}".format(round(test_task_head_acc, 2)))
                 logger.info("Best acc so far of this adapter epoch: {} (@task_head_epoch-{})".format(
-                    round(best_task_epoch_this_adapter_epoch, 2), best_task_epoch_this_adapter_epoch))
+                    round(best_acc_this_adapter_epoch, 2), best_task_epoch_this_adapter_epoch))
                 # logger.info("Best acc over all adapter epochs: {} (@adapter_epoch-{})".format(
                 #     round(best_acc, 2), best_adapter_epoch))
                 # logger.info('+'*70)
