@@ -67,8 +67,8 @@ model_video_pretrained_dim: 512
 
 # ---- Adapter 
 adapter_name: mlp_with_skip
-# {mlp_without_skip | mlp_with_skip}
-skip_connection_refined_feat_ratio: 1.0
+# {mlp_without_skip | mlp_with_skip | mlp_gradual_increase}
+skip_connection_refined_feat_ratio: 0.2
 # skip_connection_refined_feat_ratio should be a value in [0, 1]
 bottleneck_dim: 128
 adapter_refined_feat_dim: 512
@@ -83,16 +83,19 @@ adapter_num_classes: 10588
 adapter_batch_size: 256
 adapter_num_epochs: 1000
 # 3
-adapter_evaluate_first_epoch: 5
-adapter_evaluate_freq: 5
+adapter_evaluate_first_epoch: 1000
+adapter_evaluate_freq: 1000
 # 1
 adapter_early_stop_patience: 10
 # adapter_early_stop_patience means how may evaluation intervals will be used as patience
+always_save_adapter_each_epoch: True
 adapter_batch_train_log_freq: 2000
 # 2
 adapter_optimizer: 'adam'
-adapter_learning_rate: 0.0001
-adapter_weight_decay: 0.001
+adapter_learning_rate: 0.001
+# 0.0001
+adapter_weight_decay: 0
+# 0.001
 adapter_lr_warm_up: False
 adapter_warmup_steps: 5000
 

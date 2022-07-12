@@ -16,7 +16,8 @@ from args.baseline_kg_bag_of_steps import get_args_parser
 from datasets import return_dataset
 from models import create_model
 from utils.common_utils import (
-    getLogger, set_seed, get_cosine_schedule_with_warmup, save_checkpoint_best_only, adjust_lr,
+    getLogger, set_seed, get_cosine_schedule_with_warmup, 
+    save_checkpoint_best_only, save_checkpoint, adjust_lr,
     AverageMeter, accuracy)
 
 import torch
@@ -70,25 +71,26 @@ def main_train_adapter(args):
                                       pin_memory=True)
     
     
-    downstream_train_dataset = return_dataset(args, logger, args.downstream_dataset_name, 'train')
-    logger.info('total number of samples is {} for downstream < task head > training data'.format(
-        downstream_train_dataset.__len__()))
-    downstream_train_loader = DataLoader(downstream_train_dataset,
-                                         batch_size=args.task_head_batch_size,
-                                         shuffle=True,
-                                         num_workers=args.num_workers, 
-                                         collate_fn=downstream_train_dataset.custom_collate,
-                                         pin_memory=True)
-    
-    downstream_test_dataset = return_dataset(args, logger, args.downstream_dataset_name, 'test')
-    logger.info('total number of samples is {} for downstream < task head > testing data'.format(
-        downstream_test_dataset.__len__()))
-    downstream_test_loader = DataLoader(downstream_test_dataset,
-                                        batch_size=args.task_head_batch_size,
-                                        shuffle=True,
-                                        num_workers=args.num_workers, 
-                                        collate_fn=downstream_test_dataset.custom_collate,
-                                        pin_memory=True)
+    if args.adapter_evaluate_first_epoch <= args.adapter_num_epochs:
+        downstream_train_dataset = return_dataset(args, logger, args.downstream_dataset_name, 'train')
+        logger.info('total number of samples is {} for downstream < task head > training data'.format(
+            downstream_train_dataset.__len__()))
+        downstream_train_loader = DataLoader(downstream_train_dataset,
+                                             batch_size=args.task_head_batch_size,
+                                             shuffle=True,
+                                             num_workers=args.num_workers, 
+                                             collate_fn=downstream_train_dataset.custom_collate,
+                                             pin_memory=True)
+
+        downstream_test_dataset = return_dataset(args, logger, args.downstream_dataset_name, 'test')
+        logger.info('total number of samples is {} for downstream < task head > testing data'.format(
+            downstream_test_dataset.__len__()))
+        downstream_test_loader = DataLoader(downstream_test_dataset,
+                                            batch_size=args.task_head_batch_size,
+                                            shuffle=True,
+                                            num_workers=args.num_workers, 
+                                            collate_fn=downstream_test_dataset.custom_collate,
+                                            pin_memory=True)
     
     # Define adapter model
     adapter_model = create_model(args, logger, args.adapter_name)
@@ -151,6 +153,19 @@ def main_train_adapter(args):
         logger.info("Finished training < adapter > adapter_epoch-{}, took {} seconds".format(
             adapter_epoch, round(time.time() - train_adapter_for_one_epoch_start_time, 2)))
         logger.info('='*90)
+        
+        if args.always_save_adapter_each_epoch:
+            save_checkpoint(
+                {'cfg': args, 
+                 'epoch': adapter_epoch,
+                 'state_dict': adapter_model.module.state_dict() if hasattr(
+                     adapter_model, 'module') else adapter_model.state_dict(),
+                 'optimizer': adapter_optimizer.state_dict()
+                },  
+                False,
+                dir=args.checkpoint_dir, 
+                name='Adapter-' + curr_time)
+                
         
         ################################
         # --- evaluate adatper at this epoch

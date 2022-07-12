@@ -1,10 +1,13 @@
 import os
 import pdb
+import numpy as np
+import scipy.sparse as sp
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-import scipy.sparse as sp
+from torch.nn.modules.container import ModuleList
 
 
 def build_mlp(input_dim, hidden_dims, output_dim=None, use_batchnorm=False, dropout=0):
@@ -17,10 +20,10 @@ def build_mlp(input_dim, hidden_dims, output_dim=None, use_batchnorm=False, drop
     if hidden_dims:
         for dim in hidden_dims:
             layers.append(nn.Linear(D, dim))
-            if use_batchnorm:
-                layers.append(nn.BatchNorm1d(dim))
             if dropout > 0:
                 layers.append(nn.Dropout(p=dropout))
+            if use_batchnorm:
+                layers.append(nn.BatchNorm1d(dim))
             layers.append(nn.ReLU(inplace=True))
             D = dim
     if output_dim:
@@ -28,3 +31,5 @@ def build_mlp(input_dim, hidden_dims, output_dim=None, use_batchnorm=False, drop
     return nn.Sequential(*layers)
 
 
+def _get_clones(module, N):
+    return ModuleList([copy.deepcopy(module) for i in range(N)])

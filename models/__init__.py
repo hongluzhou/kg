@@ -13,6 +13,9 @@ def create_model(args, logger, model_name):
     elif model_name == 'mlp_without_skip':
         from models.adapter_mlp import Adapter
         model = Adapter(args, logger)
+    elif model_name == 'mlp_gradual_increase':
+        from models.adapter_mlp_gradual_increase import Adapter
+        model = Adapter(args, logger)
     elif model_name == 'transformer_one_layer':
         from models.task_head_task_cls import Task_Head
         model = Task_Head(args, logger)
