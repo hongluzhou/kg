@@ -31,11 +31,17 @@ class Adapter(nn.Module):
             nn.Linear(args.bottleneck_dim, args.adapter_refined_feat_dim))
         self.adapter = nn.Sequential(*adapter_layers)
         
-        
-        self.classifier = build_mlp(
-            input_dim=args.adapter_refined_feat_dim, 
-            hidden_dims=[args.adapter_num_classes//4, args.adapter_num_classes//2], 
-            output_dim=args.adapter_num_classes)
+        if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg', 
+                                           'step_kl_distribution_matching'}:
+            self.classifier = build_mlp(
+                input_dim=args.adapter_refined_feat_dim, 
+                hidden_dims=[args.adapter_num_classes//4, args.adapter_num_classes//2], 
+                output_dim=args.adapter_num_classes)
+        else:
+            self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+                    __name__, __file__))
+            pdb.set_trace()
+            os._exit(0)
         
         
         
@@ -49,7 +55,14 @@ class Adapter(nn.Module):
             segment_feat) + (1 - self.args.skip_connection_refined_feat_ratio) * segment_feat
 
         if prediction:
-            return self.classifier(refined_segment_feat)
+            if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+                return self.classifier(refined_segment_feat)
+            elif self.args.adapter_objective in {'step_kl_distribution_matching'}:
+                return F.log_softmax(self.classifier(refined_segment_feat))
+            else:
+                self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+                    __name__, __file__))
+                os._exit(0)
         else:
             return refined_segment_feat
         

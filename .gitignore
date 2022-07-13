@@ -3,3 +3,4 @@ __pycache__
 output_checkpoints
 output_logs
 wandb
+utils/print_loss_acc.ipynb

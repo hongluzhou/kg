@@ -15,6 +15,8 @@ from collections import defaultdict
 import torch
 from torch.utils.data import Dataset
 
+from utils.common_utils import numpy_topk_indices
+
 
 class HT100M(Dataset):
     def __init__(self, args, logger):
@@ -54,7 +56,7 @@ class HT100M(Dataset):
         
     def __len__(self):
         return len(self.sample_gt_files)
-
+    
     
     def __getitem__(self, index):
         sample_gt_path = self.sample_gt_files[index]
@@ -69,15 +71,31 @@ class HT100M(Dataset):
         step_scores = np.load(sample_gt_path)
         # (10588,)
         
-        gt_step_classid = np.argmax(step_scores)
         if self.args.adapter_objective == 'step_cls_with_bg':
-            if step_scores[gt_step_classid] < self.args.bg_cls_pseudo_label_threshold:
-                gt_step_classid = self.args.adapter_num_classes - 1 
+            pseudo_label = np.argmax(step_scores)
+            if step_scores[pseudo_label] < self.args.bg_cls_pseudo_label_threshold:
+                pseudo_label = self.args.adapter_num_classes - 1 
                 # the last class id is for the background class
+            return torch.FloatTensor(segment_video_feat), pseudo_label
+        
         elif self.args.adapter_objective == 'step_cls_without_bg':
-            pass
+            pseudo_label = np.argmax(step_scores)
+            return torch.FloatTensor(segment_video_feat), pseudo_label
+        
+        elif self.args.adapter_objective == 'step_kl_distribution_matching':
+            if self.args.adapter_kl_topk > 0:
+                topk_step_indices = numpy_topk_indices(step_scores, self.args.adapter_kl_topk)
+                topk_step_confidence = torch.nn.functional.softmax(
+                    torch.FloatTensor(step_scores[topk_step_indices]), dim=0)
+                pseudo_label = torch.zeros(step_scores.shape)
+                for i in range(len(topk_step_indices)):
+                    pseudo_label[topk_step_indices[i]] = topk_step_confidence[i]
+            else:
+                pseudo_label = torch.nn.functional.softmax(torch.FloatTensor(step_scores), dim=0)
+            return torch.FloatTensor(segment_video_feat), pseudo_label
+        
         else:
-            self.logger.info('The adapter_objective is not implemented!')
+            self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(__name__, __file__))
             os._exit(0)
             
-        return torch.FloatTensor(segment_video_feat), gt_step_classid
+            

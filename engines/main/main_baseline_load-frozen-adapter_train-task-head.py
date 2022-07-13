@@ -16,7 +16,8 @@ from args.baseline_no_adapter_at_all import get_args_parser
 from datasets import return_dataset
 from models import create_model
 from utils.common_utils import (
-    getLogger, set_seed, get_cosine_schedule_with_warmup, save_checkpoint_best_only, adjust_lr,
+    getLogger, set_seed, get_cosine_schedule_with_warmup, save_checkpoint_best_only, 
+    adjust_lr, trim,
     AverageMeter, accuracy)
 
 import torch
@@ -80,6 +81,24 @@ def main_train_task_head(args):
                                         collate_fn=downstream_test_dataset.custom_collate,
                                         pin_memory=True)
     
+    # Define adapter model
+    adapter_model = create_model(args, logger, args.adapter_name)
+    # Load checkpoint
+    adapter_checkpoint = torch.load(args.checkpoint)
+    adapter_params = adapter_checkpoint['state_dict']
+    adapter_params = trim(adapter_params)
+    adapter_model.module.load_state_dict(
+        adapter_params, strict=False) if hasattr(
+        adapter_model, 'module') else adapter_model.load_state_dict(
+        adapter_params, strict=False)
+    logger.info("Loaded adapter checkpoint from {}".format(args.checkpoint))
+    
+    adapter_model = nn.DataParallel(adapter_model).to(args.device)
+    adapter_model_n_parameters = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
+    logger.info('number of params is {} for < adapter > training model'.format(adapter_model_n_parameters))
+    
+    adapter_model.eval()
+    
     # Define task head model
     task_head_model = create_model(args, logger, args.task_cls_head_name)
     task_head_model = nn.DataParallel(task_head_model).to(args.device)
@@ -130,7 +149,7 @@ def main_train_task_head(args):
         ###################################
         train_task_head_for_one_epoch_start_time = time.time()
         train_task_head_acc, train_task_head_loss = train_task_head_for_one_epoch(
-            args, logger, 
+            args, logger, adapter_model,
             downstream_train_loader, task_head_model,
             task_head_criterion, task_head_optimizer, task_head_scheduler, 
             task_head_epoch)
@@ -143,7 +162,7 @@ def main_train_task_head(args):
         #####################
         test_task_head_start_time = time.time()
         test_task_head_acc, test_task_head_loss = test_task_head( 
-            args, logger, 
+            args, logger, adapter_model,
             downstream_test_loader, task_head_model, task_head_criterion, 
             task_head_epoch)
         logger.info("Finished testing < task head > task_head_epoch-{}, took {} seconds".format(
@@ -172,7 +191,7 @@ def main_train_task_head(args):
         logger.info("Current Downstream Result (task_head_epoch-{}):".format(task_head_epoch))
         logger.info("Acc of this task head epoch: {}".format(round(test_task_head_acc, 2)))
         logger.info("Best acc so far: {} (@task_head_epoch-{})".format(
-            round(best_task_head_epoch, 2), best_task_head_epoch))
+            round(best_acc, 2), best_task_head_epoch))
         # logger.info('+'*70)
         logger.info('-'*60)
         
@@ -207,7 +226,7 @@ def main_train_task_head(args):
 
     
 def train_task_head_for_one_epoch(
-    args, logger, 
+    args, logger, adapter_model,
     train_loader, model, criterion, optimizer, scheduler, epoch):
     
     batch_time = AverageMeter()
@@ -224,6 +243,13 @@ def train_task_head_for_one_epoch(
     for i, batch_data in enumerate(train_loader):
         longterm_video_feat, target_classid, longterm_video_mask = batch_data
         data_time.update(time.time() - batch_start_time)
+        
+        with torch.no_grad():
+            longterm_video_feat = adapter_model(
+                longterm_video_feat.flatten(0,1), prediction=False).reshape(
+                longterm_video_feat.shape[0], 
+                longterm_video_feat.shape[1],
+                -1)
         
         optimizer.zero_grad()
         pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
@@ -262,7 +288,7 @@ def train_task_head_for_one_epoch(
 
 @torch.no_grad()
 def test_task_head(
-    args, logger, 
+    args, logger, adapter_model,
     test_loader, model, criterion, epoch):
     
     batch_time = AverageMeter()
@@ -279,6 +305,13 @@ def test_task_head(
     for i, batch_data in enumerate(test_loader):
         longterm_video_feat, target_classid, longterm_video_mask = batch_data
         data_time.update(time.time() - batch_start_time)
+        
+        with torch.no_grad():
+            longterm_video_feat = adapter_model(
+                longterm_video_feat.flatten(0,1), prediction=False).reshape(
+                longterm_video_feat.shape[0], 
+                longterm_video_feat.shape[1],
+                -1)
         
         pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
         

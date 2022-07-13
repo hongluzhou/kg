@@ -36,6 +36,5 @@ def check_adapter_objective(args, logger):
     elif args.adapter_objective == 'step_cls_without_bg':
         assert args.adapter_num_classes == 10588
     else:
-        logger.info('The adapter_objective is not implemented yet!')
-        os._exit(0)
+        pass
     return

@@ -57,6 +57,11 @@ def getLogger(
     return logger
 
 
+def numpy_topk_indices(array, k):
+    idx = np.argpartition(array, -k)[-k:]  # Indices not sorted
+    return idx[np.argsort(array[idx])][::-1]  # Indices sorted by value from largest to smallest
+    
+
 def save_checkpoint(state, is_best, dir='checkpoints/', name='checkpoint'):
     os.makedirs(dir, exist_ok=True)
     filename = dir + name + f"_e{state['epoch']}" + '.pth'

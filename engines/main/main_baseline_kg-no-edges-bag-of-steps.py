@@ -100,9 +100,18 @@ def main_train_adapter(args):
     
     
     # Define adapter criterion
-    adapter_criterion = torch.nn.CrossEntropyLoss().to(args.device)
+    if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+        adapter_criterion = torch.nn.CrossEntropyLoss().to(args.device)
+    elif args.adapter_objective in {'step_kl_distribution_matching'}:
+        adapter_criterion = torch.nn.KLDivLoss(reduction=args.adapter_kl_reduction).to(args.device)
+    # elif args.adapter_objective in {'step_regression'}:
+    #     adapter_criterion = 
+    else:
+        logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+            __name__, __file__))
+        os._exit(0)
+            
 
-    
     # Define adapter optimizer
     if args.adapter_optimizer == 'adam':
         adapter_optimizer = torch.optim.Adam(
@@ -360,12 +369,20 @@ def train_adapter_for_one_epoch(
         data_time.update(time.time() - batch_start_time)
         
         optimizer.zero_grad()
-        pred_logits_this_batch = model(segment_video_feat)
+        preds_thisbatch = model(segment_video_feat)
         
         # measure accuracy and record loss 
         targets_thisbatch = target_classid.to(args.device)
-        loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
-        acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
+        loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
+        
+        if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+            acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
+        elif args.adapter_objective in {'step_kl_distribution_matching'}:
+            acc_thisbatch = accuracy(preds_thisbatch, torch.argmax(targets_thisbatch, dim=1), topk=(1,))
+        else:
+            self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+                __name__, __file__))
+            os._exit(0)
         
         loss.update(loss_thisbatch.item(), len(targets_thisbatch))
         acc.update(acc_thisbatch.item(), len(targets_thisbatch))
@@ -423,12 +440,12 @@ def train_task_head_for_one_epoch(
                 -1)
            
         optimizer.zero_grad()
-        pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
+        preds_thisbatch = model(longterm_video_feat, longterm_video_mask)
         
         # measure accuracy and record loss 
         targets_thisbatch = target_classid.to(args.device)
-        loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
-        acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
+        loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
+        acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
         
         loss.update(loss_thisbatch.item(), len(targets_thisbatch))
         acc.update(acc_thisbatch.item(), len(targets_thisbatch))
@@ -485,12 +502,12 @@ def test_task_head(
                 longterm_video_feat.shape[1],
                 -1)
            
-        pred_logits_this_batch = model(longterm_video_feat, longterm_video_mask)
+        preds_thisbatch = model(longterm_video_feat, longterm_video_mask)
         
         # measure accuracy and record loss 
         targets_thisbatch = target_classid.to(args.device)
-        loss_thisbatch = criterion(pred_logits_this_batch, targets_thisbatch) 
-        acc_thisbatch = accuracy(pred_logits_this_batch, targets_thisbatch, topk=(1,))
+        loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
+        acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
         
         loss.update(loss_thisbatch.item(), len(targets_thisbatch))
         acc.update(acc_thisbatch.item(), len(targets_thisbatch))
