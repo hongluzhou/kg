@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import copy
+import os
 import pdb
 
 import torch
@@ -37,10 +38,21 @@ class Adapter(nn.Module):
                 input_dim=args.adapter_refined_feat_dim, 
                 hidden_dims=[args.adapter_num_classes//4, args.adapter_num_classes//2], 
                 output_dim=args.adapter_num_classes)
+            
+        elif self.args.adapter_objective == 'step_regression':
+            if args.adapter_pseudo_label_form == 'step_narraion_matching_mpnet':
+                if args.adapter_refined_feat_dim != args.mpnet_hidden_dim:
+                    self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.mpnet_hidden_dim)
+                else:
+                    self.adapter_fix_hidden_dim_layer = None
+            elif args.adapter_pseudo_label_form == 'step_video_matching_s3d_text':
+                if args.adapter_refined_feat_dim != args.s3d_hidden_dim:
+                    self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.s3d_hidden_dim)
+                else:
+                    self.adapter_fix_hidden_dim_layer = None
         else:
             self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
                     __name__, __file__))
-            pdb.set_trace()
             os._exit(0)
         
         
@@ -53,7 +65,12 @@ class Adapter(nn.Module):
         # skip connection
         refined_segment_feat = self.args.skip_connection_refined_feat_ratio * self.adapter(
             segment_feat) + (1 - self.args.skip_connection_refined_feat_ratio) * segment_feat
-
+        
+        if self.args.adapter_objective == 'step_regression':
+            if self.adapter_fix_hidden_dim_layer:
+                refined_segment_feat = self.adapter_fix_hidden_dim_layer(refined_segment_feat)
+            return refined_segment_feat
+        
         if prediction:
             if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
                 return self.classifier(refined_segment_feat)

@@ -78,7 +78,7 @@ class HT100M(Dataset):
                 # the last class id is for the background class
             return torch.FloatTensor(segment_video_feat), pseudo_label
         
-        elif self.args.adapter_objective == 'step_cls_without_bg':
+        elif self.args.adapter_objective in {'step_cls_without_bg', 'step_regression'}:
             pseudo_label = np.argmax(step_scores)
             return torch.FloatTensor(segment_video_feat), pseudo_label
         

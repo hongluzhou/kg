@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath('./'))
 
 from args.baseline_kg_bag_of_steps import get_args_parser
 from datasets import return_dataset
-from models import create_model
+from models import create_model, losses
 from utils.common_utils import (
     getLogger, set_seed, get_cosine_schedule_with_warmup, 
     save_checkpoint_best_only, save_checkpoint, adjust_lr,
@@ -104,8 +104,8 @@ def main_train_adapter(args):
         adapter_criterion = torch.nn.CrossEntropyLoss().to(args.device)
     elif args.adapter_objective in {'step_kl_distribution_matching'}:
         adapter_criterion = torch.nn.KLDivLoss(reduction=args.adapter_kl_reduction).to(args.device)
-    # elif args.adapter_objective in {'step_regression'}:
-    #     adapter_criterion = 
+    elif args.adapter_objective in {'step_regression'}:
+        adapter_criterion = losses.StepRegressionNCELoss(args, logger).to(args.device)
     else:
         logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
             __name__, __file__))
@@ -373,14 +373,17 @@ def train_adapter_for_one_epoch(
         
         # measure accuracy and record loss 
         targets_thisbatch = target_classid.to(args.device)
-        loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
-        
         if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+            loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
             acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
         elif args.adapter_objective in {'step_kl_distribution_matching'}:
+            loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
             acc_thisbatch = accuracy(preds_thisbatch, torch.argmax(targets_thisbatch, dim=1), topk=(1,))
+        elif args.adapter_objective == 'step_regression':
+            loss_thisbatch, segment_step_sim_scores = criterion(preds_thisbatch, targets_thisbatch) 
+            acc_thisbatch = accuracy(segment_step_sim_scores, targets_thisbatch, topk=(1,))
         else:
-            self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+            logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
                 __name__, __file__))
             os._exit(0)
         

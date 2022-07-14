@@ -67,7 +67,7 @@ model_video_pretrained_dim: 512
 
 # ---- Adapter 
 adapter_name: mlp_with_skip
-# {mlp_without_skip | mlp_with_skip | mlp_gradual_increase}
+# {mlp_with_skip}
 skip_connection_refined_feat_ratio: 1.0
 # skip_connection_refined_feat_ratio should be a value in [0, 1]
 bottleneck_dim: 128
@@ -75,6 +75,8 @@ adapter_refined_feat_dim: 512
 # ---- Adapter objective settings
 adapter_pseudo_label_form: step_narraion_matching_mpnet 
 # {step_narraion_matching_mpnet | step_video_matching_s3d_text}
+mpnet_hidden_dim: 768
+s3d_hidden_dim: 512
 adapter_objective: step_cls_without_bg
 # {step_cls_without_bg | step_cls_with_bg | step_kl_distribution_matching | step_regression}
 # adapter_kl_reduction: batchmean
