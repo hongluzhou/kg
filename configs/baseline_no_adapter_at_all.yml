@@ -7,9 +7,13 @@ entity: hongluzhou
 
 # -- Dataset settings:
 need_external_knowledge: False
-downstream_dataset_name: CrossTask
+downstream_dataset_name: COIN
+# {CrossTask | COIN}
 cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
 cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+coin_video_dir: /export/einstein-vision/multimodal_video/datasets/COIN/videos
+coin_annoataion_json: /export/einstein-vision/multimodal_video/datasets/COIN/annotations/COIN.json
+coin_s3d_feat_dir: /export/home/data/coin/feats
 
 
 
@@ -25,17 +29,19 @@ model_task_cls_tx_nhead: 8
 model_task_cls_tx_dim_feedforward: 1024
 model_task_cls_tx_dropout: 0
 model_task_cls_tx_activation: relu
-model_task_cls_num_classes: 83
+model_task_cls_num_classes: 180
+# cross task - task recognition: 83
+# coin - task recognition: 180
 time_position_embedding_type: absolute_learned_1D
 max_time_ids_embed: 500
 # ---- Task head training settings
 task_head_batch_size: 16
-task_head_num_epochs: 500
+task_head_num_epochs: 1000
 # 2
-task_head_early_stop_patience: 20
-task_head_batch_train_log_freq: 1000000
+task_head_early_stop_patience: 50
+task_head_batch_train_log_freq: 1
 # 50, a sufficiently large number means no log at all
-task_head_batch_test_log_freq: 1000000
+task_head_batch_test_log_freq: 1
 # 20, a sufficiently large number means no log at all
 task_head_optimizer: 'adam'
 task_head_learning_rate: 0.0001

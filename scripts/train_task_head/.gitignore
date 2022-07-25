@@ -1,5 +1,4 @@
 __pycache__
 .ipynb_checkpoints
 logs
-r1.sh
-r2.sh
+r*.sh

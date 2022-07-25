@@ -92,6 +92,10 @@ def main_train_task_head(args):
         adapter_model, 'module') else adapter_model.load_state_dict(
         adapter_params, strict=False)
     logger.info("Loaded adapter checkpoint from {}".format(args.checkpoint))
+    if (args.adapter_name == 'mlp_with_skip' and 
+        args.skip_connection_refined_feat_ratio == 'learnable'):
+        logger.info("The learnable adapter refine ratio is {}".format(
+            round(adapter_model.skip_connection_refined_feat_ratio.data.item(), 4)))
     
     adapter_model = nn.DataParallel(adapter_model).to(args.device)
     adapter_model_n_parameters = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)

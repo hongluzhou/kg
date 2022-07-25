@@ -32,10 +32,10 @@ class Adapter(nn.Module):
             nn.Linear(args.bottleneck_dim, args.adapter_refined_feat_dim))
         self.adapter = nn.Sequential(*adapter_layers)
         
-        if self.args.skip_connection_refined_feat_ratio == 'learnable':
-            self.skip_connection_refined_feat_ratio_begin = torch.FloatTensor([1.0])
-            self.skip_connection_refined_feat_ratio = nn.Parameter(
-                self.skip_connection_refined_feat_ratio_begin, requires_grad=True)
+        self.fusion = build_mlp(input_dim=args.adapter_refined_feat_dim + args.model_video_pretrained_dim, 
+                hidden_dims=[int((args.adapter_refined_feat_dim + args.model_video_pretrained_dim)/1.5),
+                             int((args.adapter_refined_feat_dim + args.model_video_pretrained_dim)//2)], 
+                output_dim=args.adapter_refined_feat_dim)
         
         if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg', 
                                            'step_kl_distribution_matching'}:
@@ -62,27 +62,13 @@ class Adapter(nn.Module):
         
         
         
-    def forward(self, segment_feat, prediction=True, update_ratio=False):
+    def forward(self, segment_feat, prediction=True):
         """
         - segment_feat: (B, 512)
         """
-        
-        # skip connection
-        if self.args.skip_connection_refined_feat_ratio == 'learnable':
-            if update_ratio:
-                ratio = self.skip_connection_refined_feat_ratio
-            else:
-                ratio = self.skip_connection_refined_feat_ratio_begin.to(self.args.device)
-                
-            # ratio = F.relu(ratio)
-            # ratio = torch.min(
-            #     torch.cat([ratio, torch.FloatTensor([1.0]).to(self.args.device)], dim=0))
-            refined_segment_feat = ratio * self.adapter(segment_feat) + (1 - ratio) * segment_feat
-            
-        else:
-            refined_segment_feat = self.args.skip_connection_refined_feat_ratio * self.adapter(
-                segment_feat) + (1 - self.args.skip_connection_refined_feat_ratio) * segment_feat
-        
+        refined_segment_feat = self.fusion(
+            torch.cat([self.adapter(segment_feat), segment_feat], dim=1))
+         
         if prediction:
             if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
                 return self.classifier(refined_segment_feat)

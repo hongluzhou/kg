@@ -54,8 +54,12 @@ find_matched_segments_for_steps_using_video_topK: 1
 
 adapter_train_dataset_name: HowTo100M-subset_9.6s-visual-segments
 downstream_dataset_name: CrossTask
+# {CrossTask | COIN}
 cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
 cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+coin_video_dir: /export/einstein-vision/multimodal_video/datasets/COIN/videos
+coin_annoataion_json: /export/einstein-vision/multimodal_video/datasets/COIN/annotations/COIN.json
+coin_s3d_feat_dir: /export/home/data/coin/feats
 
 
 
@@ -67,23 +71,30 @@ model_language_pretrained_name: sentence-transformers/paraphrase-mpnet-base-v2
 model_video_pretrained_dim: 512
 
 # ---- Adapter 
-adapter_name: mlp_with_skip
-# {mlp_without_skip | mlp_with_skip | mlp_gradual_increase}
-skip_connection_refined_feat_ratio: 0.2
-# skip_connection_refined_feat_ratio should be a value in [0, 1]
+adapter_name: mlp_learned_fusion
+# {mlp_with_skip | mlp_learned_fusion }
+skip_connection_refined_feat_ratio: learnable
+# skip_connection_refined_feat_ratio should be a value in [0, 1] or 'learnable'
 bottleneck_dim: 128
 adapter_refined_feat_dim: 512
 # ---- Adapter objective settings
 adapter_pseudo_label_form: step_narraion_matching_mpnet 
 # {step_narraion_matching_mpnet | step_video_matching_s3d_text}
+mpnet_hidden_dim: 768
+s3d_hidden_dim: 512
 adapter_objective: step_cls_without_bg
 # {step_cls_without_bg | step_cls_with_bg | step_kl_distribution_matching | step_regression}
-# adapter_kl_reduction: batchmean
-# # {mean | batchmean | sum}
-# adapter_kl_topk: 3
-# # -1 means not to just use topk for kl
-# bg_cls_pseudo_label_threshold: 0.5
+adapter_kl_reduction: batchmean
+# {mean | batchmean | sum}
+adapter_kl_topk: 3
+# -1 means not to just use topk for kl
+bg_cls_pseudo_label_threshold: 0.5
 adapter_num_classes: 10588
+# 10588 or 10589
+step_regression_func: nce
+# {mse | nce}
+step_regression_func_mse_reductin: mean
+# {mean | sum}
 # ---- Adapter training settings
 adapter_batch_size: 256
 adapter_num_epochs: 1000
@@ -100,7 +111,7 @@ adapter_optimizer: 'adam'
 adapter_learning_rate: 0.001
 # 0.0001
 adapter_weight_decay: 0
-# 0.001
+# 0
 adapter_lr_warm_up: False
 adapter_warmup_steps: 5000
 
@@ -115,6 +126,8 @@ time_position_embedding_type: absolute_learned_1D
 max_time_ids_embed: 500
 # ---- Task head objective settings
 model_task_cls_num_classes: 83
+# cross task - task recognition: 83
+# coin - task recognition: 180
 # ---- Task head training settings
 task_head_batch_size: 16
 task_head_num_epochs: 1000

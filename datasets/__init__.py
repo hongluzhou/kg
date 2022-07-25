@@ -43,3 +43,8 @@ def return_dataset(args, logger, dataset_name, dataset_split='train'):
         from datasets.cross_task import CrossTask
         return CrossTask(args, logger, split=dataset_split)
     
+    
+    elif dataset_name == 'COIN':
+        from datasets.coin import COIN
+        return COIN(args, logger, split=dataset_split)
+    

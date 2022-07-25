@@ -23,6 +23,8 @@ def get_args_parser():
                                       help="config file path")
     train_adapter_parser.add_argument('--use_wandb', type=int, default=0,
                                       help="1 means use wandb to log experiments, 0 otherwise")
+    train_adapter_parser.add_argument("--load_pretrained", type=int, required=False,
+                                      help="whether to load pretrained weights for training")
     train_adapter_parser.add_argument("--checkpoint", type=str, required=False,
                                       help="a path to model checkpoint file to load pretrained weights")
     train_adapter_parser.add_argument('--hp_tune', action='store_true', 

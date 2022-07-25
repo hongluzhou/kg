@@ -17,7 +17,8 @@ from datasets import return_dataset
 from models import create_model, losses
 from utils.common_utils import (
     getLogger, set_seed, get_cosine_schedule_with_warmup, 
-    save_checkpoint_best_only, save_checkpoint, adjust_lr,
+    save_checkpoint_best_only, save_checkpoint, 
+    adjust_lr, trim,
     AverageMeter, accuracy)
 
 import torch
@@ -94,6 +95,16 @@ def main_train_adapter(args):
     
     # Define adapter model
     adapter_model = create_model(args, logger, args.adapter_name)
+    if args.load_pretrained: # Load checkpoint
+        adapter_checkpoint = torch.load(args.checkpoint)
+        adapter_params = adapter_checkpoint['state_dict']
+        adapter_params = trim(adapter_params)
+        adapter_model.module.load_state_dict(
+            adapter_params, strict=False) if hasattr(
+            adapter_model, 'module') else adapter_model.load_state_dict(
+            adapter_params, strict=False)
+        logger.info("Loaded adapter checkpoint from {}".format(args.checkpoint))
+
     adapter_model = nn.DataParallel(adapter_model).to(args.device)
     adapter_model_n_parameters = sum(p.numel() for p in adapter_model.parameters() if p.requires_grad)
     logger.info('number of params is {} for < adapter > training model'.format(adapter_model_n_parameters))
@@ -105,7 +116,11 @@ def main_train_adapter(args):
     elif args.adapter_objective in {'step_kl_distribution_matching'}:
         adapter_criterion = torch.nn.KLDivLoss(reduction=args.adapter_kl_reduction).to(args.device)
     elif args.adapter_objective in {'step_regression'}:
-        adapter_criterion = losses.StepRegressionNCELoss(args, logger).to(args.device)
+        if args.step_regression_func == 'mse':
+            adapter_criterion = torch.nn.MSELoss(
+                reduction=args.step_regression_func_mse_reductin).to(args.device)  # MSE loss
+        else:
+            adapter_criterion = losses.StepRegressionNCELoss(args, logger).to(args.device)  # NCE loss
     else:
         logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
             __name__, __file__))
@@ -140,6 +155,8 @@ def main_train_adapter(args):
     best_adapter_epoch = -1
     best_task_head_epoch = -1
     adapter_early_stop_counter= 0
+    
+            
     ##################################################################################################################
     for adapter_epoch in range(1, args.adapter_num_epochs + 1):
         
@@ -311,32 +328,35 @@ def main_train_adapter(args):
                     logger.info("Early stopping the < adapter > model")
                     break
             
-        # finished evaluating adapter at this epoch
+        # finished evaluating adapter at this epoch    
+        if args.adapter_name == 'mlp_with_skip' and args.skip_connection_refined_feat_ratio == 'learnable':
+            learned_ratio = round(adapter_model.module.skip_connection_refined_feat_ratio.data.item(), 4)
+            logger.info("The learnable adapter refine ratio is {}".format(learned_ratio))
+                
         
         if args.use_wandb:
+            wandb_logdict = {
+                "adapter_epoch": adapter_epoch,
+                "adapter_train_loss": adapter_loss,
+                "adapter_train_acc": adapter_acc
+            }
+            
+            wandb_logdict.update({'learned_skip_connection_refined_feat_ratio': learned_ratio})
+        
             if adapter_epoch >= args.adapter_evaluate_first_epoch:
-                wandb.log(
+                wandb_logdict.update(
                     {
-                        "adapter_epoch": adapter_epoch,
-                        "adapter_train_loss": adapter_loss,
-                        "adapter_train_acc": adapter_acc,
                         "task_head_test_acc": best_acc_this_adapter_epoch,
                         "task_head_test_acc_epoch": best_task_epoch_this_adapter_epoch,
                         "best_acc": best_acc,
                         "best_adapter_epoch": best_adapter_epoch,
                         "best_task_head_epoch": best_task_head_epoch
-                    },
-                    step=adapter_epoch
+                    }
                 )
-            else:
-                wandb.log(
-                    {
-                        "adapter_epoch": adapter_epoch,
-                        "adapter_train_loss": adapter_loss,
-                        "adapter_train_acc": adapter_acc
-                    },
-                    step=adapter_epoch
-                )
+                
+            wandb.log(wandb_logdict, step=adapter_epoch)
+            
+            
 
     logger.info('\n\n\n' + '#'*90)       
     logger.info("Finished training and testing < adapter > for all epochs, took {} seconds".format(
@@ -365,23 +385,43 @@ def train_adapter_for_one_epoch(
     criterion.train() 
     
     for i, batch_data in enumerate(train_loader):
-        segment_video_feat, target_classid = batch_data
+        if args.adapter_objective == 'step_regression' and args.step_regression_func == 'mse':
+            segment_video_feat, targets_clsids, pseudo_targets = batch_data
+            targets_clsids = targets_clsids.to(args.device)
+            targets_thisbatch = pseudo_targets.to(args.device)
+        else:
+            segment_video_feat, pseudo_targets = batch_data
+            targets_thisbatch = pseudo_targets.to(args.device)
+            
         data_time.update(time.time() - batch_start_time)
         
         optimizer.zero_grad()
-        preds_thisbatch = model(segment_video_feat)
+        if (args.adapter_name == 'mlp_with_skip' and 
+            args.skip_connection_refined_feat_ratio == 'learnable' and 
+            epoch > 10):
+            preds_thisbatch = model(segment_video_feat, update_ratio=True)
+        else:
+            preds_thisbatch = model(segment_video_feat)
         
         # measure accuracy and record loss 
-        targets_thisbatch = target_classid.to(args.device)
         if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+            
             loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
             acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
+        
         elif args.adapter_objective in {'step_kl_distribution_matching'}:
             loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
             acc_thisbatch = accuracy(preds_thisbatch, torch.argmax(targets_thisbatch, dim=1), topk=(1,))
+        
         elif args.adapter_objective == 'step_regression':
-            loss_thisbatch, segment_step_sim_scores = criterion(preds_thisbatch, targets_thisbatch) 
-            acc_thisbatch = accuracy(segment_step_sim_scores, targets_thisbatch, topk=(1,))
+            if args.step_regression_func == 'mse':
+                loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
+                segment_step_sim_scores = torch.matmul(preds_thisbatch, targets_thisbatch.t())  
+                acc_thisbatch = accuracy(segment_step_sim_scores, targets_clsids, topk=(1,))
+            else:
+                loss_thisbatch, segment_step_sim_scores = criterion(preds_thisbatch, targets_thisbatch) 
+                acc_thisbatch = accuracy(segment_step_sim_scores, targets_thisbatch, topk=(1,))
+        
         else:
             logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
                 __name__, __file__))
@@ -410,7 +450,7 @@ def train_adapter_for_one_epoch(
                             epoch, i+1, len(train_loader), 
                             # batch_time=batch_time, data_time=data_time, 
                             loss=loss, acc=acc))
-    
+        
     return acc.avg, loss.avg
     
     
@@ -473,7 +513,7 @@ def train_task_head_for_one_epoch(
                             adapter_epoch, epoch, i+1, len(train_loader), 
                             # batch_time=batch_time, data_time=data_time, 
                             loss=loss, acc=acc))
-    
+        
     return
     
 
