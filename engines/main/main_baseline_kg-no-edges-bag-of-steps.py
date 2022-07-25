@@ -341,7 +341,8 @@ def main_train_adapter(args):
                 "adapter_train_acc": adapter_acc
             }
             
-            wandb_logdict.update({'learned_skip_connection_refined_feat_ratio': learned_ratio})
+            if args.adapter_name == 'mlp_with_skip' and args.skip_connection_refined_feat_ratio == 'learnable':
+                wandb_logdict.update({'learned_skip_connection_refined_feat_ratio': learned_ratio})
         
             if adapter_epoch >= args.adapter_evaluate_first_epoch:
                 wandb_logdict.update(
