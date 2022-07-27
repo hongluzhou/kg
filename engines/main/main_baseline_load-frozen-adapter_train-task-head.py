@@ -12,7 +12,7 @@ import wandb
 import sys
 sys.path.insert(0, os.path.abspath('./'))
 
-from args.baseline_kg_bag_of_steps import get_args_parser
+from args.baseline_no_adapter_at_all import get_args_parser
 from datasets import return_dataset
 from models import create_model
 from utils.common_utils import (
