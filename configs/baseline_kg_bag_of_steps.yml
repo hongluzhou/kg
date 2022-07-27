@@ -5,15 +5,16 @@ project: ginst
 entity: hongluzhou
 
 
-# -- Dataset settings:
+
+
+# -- External knowledge settings:
 need_external_knowledge: True
-external_knowledge_ready: False
+external_knowledge_ready: True
 external_knowledge_version: bag_of_steps_only_step_node_desciption_feats
 step_nodes_formed: True
 segment_wikistep_sim_scores_n_ready: True
 segment_wikistep_sim_scores_v_ready: True
 
-# ---- External knowledge (WikiHow):
 wikihow_dir: /export/home/code/ginst/wikihow/WikiHow-DistantSupervision
 # /export/home/code/ginst/wikihow/WikiHow-Complete/WikiHow-Dataset
 wikihow_version: wikihow_subset
@@ -51,15 +52,25 @@ find_matched_segments_for_steps_using_video_topK: 1
 # 3
 
 
+
+
+# -- Pre-train & Downstream settings:
 adapter_train_dataset_name: HowTo100M-subset_9.6s-visual-segments
-downstream_dataset_name: CrossTask
+# { HowTo100M-subset_9.6s-visual-segments | }
+downstream_dataset_name: COIN
 # {CrossTask | COIN}
+downstream_task_name: step_forecasting
+# { task_cls | step_forecasting }
+
+# CrossTask paths
 cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
 cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+
+# COIN paths
 coin_video_dir: /export/einstein-vision/multimodal_video/datasets/COIN/videos
 coin_annoataion_json: /export/einstein-vision/multimodal_video/datasets/COIN/annotations/COIN.json
 coin_s3d_feat_dir: /export/home/data/coin/feats
-
+coin_step_forecasting_history: 1
 
 
 
@@ -69,15 +80,16 @@ model_language_pretrained_name: sentence-transformers/paraphrase-mpnet-base-v2
 # ---- Video pretrained model:
 model_video_pretrained_dim: 512
 
+
 # ---- Adapter 
-adapter_name: mlp_learned_fusion
+adapter_name: mlp_with_skip
 # {mlp_with_skip | mlp_learned_fusion }
-skip_connection_refined_feat_ratio: learnable
+skip_connection_refined_feat_ratio: 1.0
 # skip_connection_refined_feat_ratio should be a value in [0, 1] or 'learnable'
 bottleneck_dim: 128
 adapter_refined_feat_dim: 512
 # ---- Adapter objective settings
-adapter_pseudo_label_form: step_narraion_matching_mpnet 
+adapter_pseudo_label_form: step_video_matching_s3d_text 
 # {step_narraion_matching_mpnet | step_video_matching_s3d_text}
 mpnet_hidden_dim: 768
 s3d_hidden_dim: 512
@@ -107,26 +119,46 @@ always_save_adapter_each_epoch: True
 adapter_batch_train_log_freq: 2000
 # 2000
 adapter_optimizer: 'adam'
-adapter_learning_rate: 0.001
+adapter_learning_rate: 0.0001
 # 0.0001
 adapter_weight_decay: 0
 # 0
 adapter_lr_warm_up: False
 adapter_warmup_steps: 5000
 
-# ---- Task head
-task_cls_head_name: transformer_one_layer
+# ---- Task head task_cls
+model_task_cls_head_name: transformer_one_layer
+# { transformer_one_layer | }
+# --------- Task head task_cls trasformer configurations
 model_task_cls_tx_hidden_dim: 512
 model_task_cls_tx_nhead: 8
 model_task_cls_tx_dim_feedforward: 1024
 model_task_cls_tx_dropout: 0
 model_task_cls_tx_activation: relu
-time_position_embedding_type: absolute_learned_1D
-max_time_ids_embed: 500
-# ---- Task head objective settings
+model_task_cls_tx_time_pos_embed_type: absolute_learned_1D
+model_task_cls_tx_max_time_ids_embed: 500
+model_task_cls_classifier_hidden_dim: 128
 model_task_cls_num_classes: 83
 # cross task - task recognition: 83
 # coin - task recognition: 180
+
+
+# ---- Task head step_forecasting
+model_step_forecasting_head_name: transformer_one_layer
+# { transformer_one_layer | }
+# --------- Task head step_forecasting trasformer configurations
+model_step_forecasting_tx_hidden_dim: 512
+model_step_forecasting_tx_nhead: 8
+model_step_forecasting_tx_dim_feedforward: 1024
+model_step_forecasting_tx_dropout: 0
+model_step_forecasting_tx_activation: relu
+model_step_forecasting_tx_time_pos_embed_type: absolute_learned_1D
+model_step_forecasting_tx_max_time_ids_embed: 500
+model_step_forecasting_classifier_hidden_dim: 768
+model_step_forecasting_num_classes: 778
+# coin - step forecasting: 778
+
+
 # ---- Task head training settings
 task_head_batch_size: 16
 task_head_num_epochs: 1000

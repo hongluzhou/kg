@@ -5,35 +5,65 @@ project: ginst
 entity: hongluzhou
 
 
-# -- Dataset settings:
+# -- External knowledge settings:
 need_external_knowledge: False
+
+ 
+# -- Downstream settings:
 downstream_dataset_name: COIN
 # {CrossTask | COIN}
+downstream_task_name: step_forecasting
+# { task_cls | step_forecasting }
+
+
+# CrossTask paths
 cross_task_video_dir: /export/einstein-vision/multimodal_video/datasets/CrossTask/videos
 cross_task_s3d_feat_dir: /export/home/data/crosstask/feats
+
+# COIN paths
 coin_video_dir: /export/einstein-vision/multimodal_video/datasets/COIN/videos
 coin_annoataion_json: /export/einstein-vision/multimodal_video/datasets/COIN/annotations/COIN.json
 coin_s3d_feat_dir: /export/home/data/coin/feats
-
-
+coin_step_forecasting_history: 1
 
 
 # -- Model settings:
 # ---- Video pretrained model:
 model_video_pretrained_dim: 512
 
-# ---- Task head
-task_cls_head_name: transformer_one_layer
+# ---- Task head task_cls
+model_task_cls_head_name: transformer_one_layer
+# { transformer_one_layer | }
+# --------- Task head task_cls trasformer configurations
 model_task_cls_tx_hidden_dim: 512
 model_task_cls_tx_nhead: 8
 model_task_cls_tx_dim_feedforward: 1024
 model_task_cls_tx_dropout: 0
 model_task_cls_tx_activation: relu
-model_task_cls_num_classes: 180
+model_task_cls_tx_time_pos_embed_type: absolute_learned_1D
+model_task_cls_tx_max_time_ids_embed: 500
+model_task_cls_classifier_hidden_dim: 128
+model_task_cls_num_classes: 83
 # cross task - task recognition: 83
 # coin - task recognition: 180
-time_position_embedding_type: absolute_learned_1D
-max_time_ids_embed: 500
+
+
+# ---- Task head step_forecasting
+model_step_forecasting_head_name: transformer_one_layer
+# { transformer_one_layer | }
+# --------- Task head step_forecasting trasformer configurations
+model_step_forecasting_tx_hidden_dim: 512
+model_step_forecasting_tx_nhead: 8
+model_step_forecasting_tx_dim_feedforward: 1024
+model_step_forecasting_tx_dropout: 0
+model_step_forecasting_tx_activation: relu
+model_step_forecasting_tx_time_pos_embed_type: absolute_learned_1D
+model_step_forecasting_tx_max_time_ids_embed: 500
+model_step_forecasting_classifier_hidden_dim: 768
+model_step_forecasting_num_classes: 778
+# coin - step forecasting: 778
+
+
 # ---- Task head training settings
 task_head_batch_size: 16
 task_head_num_epochs: 1000
@@ -57,7 +87,7 @@ cudnn_benchmark: True
 
 
 # -- Runtime settings:
-num_workers: 10
+num_workers: -1
 # num_workers -1 will dynamically compute the number of available workers
 device: cuda
   

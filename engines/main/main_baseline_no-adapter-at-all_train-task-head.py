@@ -81,7 +81,11 @@ def main_train_task_head(args):
                                         pin_memory=True)
     
     # Define task head model
-    task_head_model = create_model(args, logger, args.task_cls_head_name)
+    if args.downstream_task_name == 'task_cls':
+        task_head_model = create_model(args, logger, args.model_task_cls_head_name)
+    elif args.downstream_task_name == 'step_forecasting':
+        task_head_model = create_model(args, logger, args.model_step_forecasting_head_name)
+    
     task_head_model = nn.DataParallel(task_head_model).to(args.device)
     task_head_model_n_parameters = sum(p.numel() for p in task_head_model.parameters() if p.requires_grad)
     logger.info('number of params is {} for < task head > training model'.format(task_head_model_n_parameters))

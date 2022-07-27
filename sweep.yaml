@@ -1,0 +1,45 @@
+# https://docs.wandb.ai/guides/sweeps/configuration
+project: ginst
+entity: hongluzhou
+name: Sweep | Adapter | SN (More 3)
+description: sweep for step narration matching | step_cls_without_bg
+
+
+metric:
+    name: adapter_train_acc
+    goal: maximize
+method: grid
+early_terminate:
+    type: hyperband
+    min_iter: 2
+  
+
+# program: main.py train --hp_tune
+command:
+    - python
+    - engines/main/main_baseline_kg-no-edges-bag-of-steps.py
+    - train_adapter
+    - "--hp_tune"
+    - "--cfg"
+    - configs/baseline_kg_bag_of_steps.yml
+    - "--use_wandb"
+    - 1
+
+
+parameters:
+    adapter_pseudo_label_form:
+         values:
+            ['step_narraion_matching_mpnet']
+    adapter_batch_size:
+        values:
+            [32, 64, 128, 512]
+    adapter_learning_rate:
+        values:
+            [0.0001, 0.0005, 0.001, 0.005]
+    adapter_weight_decay:
+        values:
+            [0, 0.000001]
+    always_save_adapter_each_epoch:
+        values:
+            [0]
+    

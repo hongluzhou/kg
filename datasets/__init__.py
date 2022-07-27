@@ -45,6 +45,10 @@ def return_dataset(args, logger, dataset_name, dataset_split='train'):
     
     
     elif dataset_name == 'COIN':
-        from datasets.coin import COIN
+        if args.downstream_task_name == 'task_cls':
+            from datasets.coin import COIN_Task_CLS as COIN
+        elif args.downstream_task_name == 'step_forecasting':
+            from datasets.coin import COIN_Step_Forecast as COIN
+            
         return COIN(args, logger, split=dataset_split)
     

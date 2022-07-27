@@ -27,8 +27,6 @@ def get_args_parser():
                                       help="a path to model checkpoint file to load pretrained weights")
     train_adapter_parser.add_argument('--hp_tune', action='store_true', 
                                       help="tune hyper-parameter or not by using wandb")
-    train_adapter_parser.add_argument('--not_save_best_model', action='store_true', 
-                                      help="not save best model in this run")
      
     args = parser.parse_args()
     

@@ -19,34 +19,34 @@ class Task_Head(nn.Module):
         self.logger = logger
         
         #### embedding layers
-        self.cls_embed_layer = nn.Embedding(1, args.model_task_cls_tx_hidden_dim)
+        self.cls_embed_layer = nn.Embedding(1, args.model_step_forecasting_tx_hidden_dim)
         
-        if args.model_task_cls_tx_time_pos_embed_type == 'absolute_learned_1D':
+        if args.model_step_forecasting_tx_time_pos_embed_type == 'absolute_learned_1D':
             
             from models.position_encoding import PositionEmbeddingAbsoluteLearned_1D
             self.time_embed_layer = PositionEmbeddingAbsoluteLearned_1D(
-                args.model_task_cls_tx_max_time_ids_embed, args.model_task_cls_tx_hidden_dim)
+                args.model_step_forecasting_tx_max_time_ids_embed, args.model_step_forecasting_tx_hidden_dim)
         
-        elif args.model_task_cls_tx_time_pos_embed_type == 'fixed_sinusoidal_1D':
+        elif args.model_step_forecasting_tx_time_pos_embed_type == 'fixed_sinusoidal_1D':
             from models.position_encoding import PositionEmbeddingFixedSine_1D
             self.time_embed_layer = PositionEmbeddingFixedSine_1D(
-                args.model_task_cls_tx_hidden_dim)
+                args.model_step_forecasting_tx_hidden_dim)
         
         else:
-            raise ValueError(f"not supported {self.args.model_task_cls_tx_time_pos_embed_type}")
+            raise ValueError(f"not supported {self.args.model_step_forecasting_tx_time_pos_embed_type}")
             
         
         self.long_term_model = TransformerEncoderLayer(
-            args.model_task_cls_tx_hidden_dim, 
-            args.model_task_cls_tx_nhead, 
-            args.model_task_cls_tx_dim_feedforward,
-            args.model_task_cls_tx_dropout, 
-            args.model_task_cls_tx_activation)
+            args.model_step_forecasting_tx_hidden_dim, 
+            args.model_step_forecasting_tx_nhead, 
+            args.model_step_forecasting_tx_dim_feedforward,
+            args.model_step_forecasting_tx_dropout, 
+            args.model_step_forecasting_tx_activation)
         
         self.classifier = build_mlp(
-            input_dim=args.model_task_cls_tx_hidden_dim, 
-            hidden_dims=[args.model_task_cls_classifier_hidden_dim], 
-            output_dim=args.model_task_cls_num_classes)
+            input_dim=args.model_step_forecasting_tx_hidden_dim, 
+            hidden_dims=[args.model_step_forecasting_classifier_hidden_dim], 
+            output_dim=args.model_step_forecasting_num_classes)
         
         
     def forward(self, video_feats, video_mask):
@@ -65,13 +65,13 @@ class Task_Head(nn.Module):
         CLS = self.cls_embed_layer(CLS_id)
         
         # time positional encoding
-        if self.args.model_task_cls_tx_time_pos_embed_type == 'absolute_learned_1D':
+        if self.args.model_step_forecasting_tx_time_pos_embed_type == 'absolute_learned_1D':
             time_ids = torch.arange(1, T+1, device=device).repeat(B, 1)
             time_seq = self.time_embed_layer(time_ids) 
-        elif self.args.model_task_cls_tx_time_pos_embed_type == 'fixed_sinusoidal_1D':
+        elif self.args.model_step_forecasting_tx_time_pos_embed_type == 'fixed_sinusoidal_1D':
             time_seq = self.time_embed_layer(T, device=device).unsqueeze(0).unsqueeze(0).repeat(B, N, J, 1, 1)
         else:
-            raise ValueError(f"not supported {self.args.model_task_cls_tx_time_pos_embed_type}")
+            raise ValueError(f"not supported {self.args.model_step_forecasting_tx_time_pos_embed_type}")
       
         tx_updated_sequence = self.long_term_model(
             torch.cat([CLS, video_feats + time_seq], dim=1).transpose(0, 1),
