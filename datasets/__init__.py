@@ -43,7 +43,6 @@ def return_dataset(args, logger, dataset_name, dataset_split='train'):
         from datasets.cross_task import CrossTask
         return CrossTask(args, logger, split=dataset_split)
     
-    
     elif dataset_name == 'COIN':
         if args.downstream_task_name == 'task_cls':
             from datasets.coin import COIN_Task_CLS as COIN

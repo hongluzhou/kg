@@ -92,7 +92,9 @@ num_workers: -1
 device: cuda
   
 # -- Output settings:
-checkpoint_dir: ./output_checkpoints/baseline_no-adatper
-log_dir: ./output_logs/
+checkpoint_dir: /export/home/outputs/ginst/output_checkpoints/train_task_head_no_adatper_at_all/
+log_dir: /export/home/outputs/ginst/output_logs/
+# checkpoint_dir: ./output_checkpoints/train_task_head_no_adatper_at_all
+# log_dir: ./output_logs/
 
 

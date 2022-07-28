@@ -21,11 +21,11 @@ class Adapter(nn.Module):
         self.args = args
         self.logger = logger
         
-        assert self.args.adapter_refined_feat_dim == self.args.model_video_pretrained_dim
+        assert self.args.adapter_refined_feat_dim == self.args.s3d_hidden_dim
         
         adapter_layers = []
         adapter_layers.append(
-            nn.Linear(args.model_video_pretrained_dim, args.bottleneck_dim))
+            nn.Linear(args.s3d_hidden_dim, args.bottleneck_dim))
         adapter_layers.append(
             nn.ReLU(inplace=True))
         adapter_layers.append(
@@ -37,28 +37,36 @@ class Adapter(nn.Module):
             self.skip_connection_refined_feat_ratio = nn.Parameter(
                 self.skip_connection_refined_feat_ratio_begin, requires_grad=True)
         
-        if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg', 
-                                           'step_kl_distribution_matching'}:
-            self.classifier = build_mlp(
-                input_dim=args.adapter_refined_feat_dim, 
-                hidden_dims=[args.adapter_num_classes//4, args.adapter_num_classes//2], 
-                output_dim=args.adapter_num_classes)
-            
-        elif self.args.adapter_objective == 'step_regression':
-            if args.adapter_pseudo_label_form == 'step_narraion_matching_mpnet':
-                if args.adapter_refined_feat_dim != args.mpnet_hidden_dim:
-                    self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.mpnet_hidden_dim)
-                else:
-                    self.adapter_fix_hidden_dim_layer = None
-            elif args.adapter_pseudo_label_form == 'step_video_matching_s3d_text':
-                if args.adapter_refined_feat_dim != args.s3d_hidden_dim:
-                    self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.s3d_hidden_dim)
-                else:
-                    self.adapter_fix_hidden_dim_layer = None
-        else:
-            self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
-                    __name__, __file__))
-            os._exit(0)
+        if 'ours' in self.args.adapter_objective:
+            if self.args.adapter_objective == 'ours_Q1':
+                self.answer_head_Q1 = build_mlp(
+                    input_dim=args.adapter_refined_feat_dim, 
+                    hidden_dims=[args.num_nodes//4, args.num_nodes//2], 
+                    output_dim=args.num_nodes)
+                
+        else:   # baseline objectives
+            if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg', 
+                                               'step_kl_distribution_matching'}:
+                self.classifier = build_mlp(
+                    input_dim=args.adapter_refined_feat_dim, 
+                    hidden_dims=[args.adapter_num_classes//6, args.adapter_num_classes//4, args.adapter_num_classes//2], 
+                    output_dim=args.adapter_num_classes)
+
+            elif self.args.adapter_objective == 'step_regression':
+                if args.adapter_pseudo_label_form == 'step_narraion_matching_mpnet':
+                    if args.adapter_refined_feat_dim != args.mpnet_hidden_dim:
+                        self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.mpnet_hidden_dim)
+                    else:
+                        self.adapter_fix_hidden_dim_layer = None
+                elif args.adapter_pseudo_label_form == 'step_video_matching_s3d_text':
+                    if args.adapter_refined_feat_dim != args.s3d_hidden_dim:
+                        self.adapter_fix_hidden_dim_layer = nn.Linear(args.adapter_refined_feat_dim, args.s3d_hidden_dim)
+                    else:
+                        self.adapter_fix_hidden_dim_layer = None
+            else:
+                self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+                        __name__, __file__))
+                os._exit(0)
         
         
         
@@ -84,18 +92,25 @@ class Adapter(nn.Module):
                 segment_feat) + (1 - self.args.skip_connection_refined_feat_ratio) * segment_feat
         
         if prediction:
-            if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
-                return self.classifier(refined_segment_feat)
-            elif self.args.adapter_objective in {'step_kl_distribution_matching'}:
-                return F.log_softmax(self.classifier(refined_segment_feat), dim=1)
-            elif self.args.adapter_objective == 'step_regression':
-                if self.adapter_fix_hidden_dim_layer:
-                    refined_segment_feat = self.adapter_fix_hidden_dim_layer(refined_segment_feat)
-                return refined_segment_feat
-            else:
-                self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
-                    __name__, __file__))
-                os._exit(0)
+            if 'ours' in self.args.adapter_objective:
+                
+                if self.args.adapter_objective == 'ours_Q1':
+                    return F.log_softmax(self.answer_head_Q1(refined_segment_feat), dim=1)  # assume kl loss
+                
+                
+            else:  # baseline objectives
+                if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
+                    return self.classifier(refined_segment_feat)
+                elif self.args.adapter_objective in {'step_kl_distribution_matching'}:
+                    return F.log_softmax(self.classifier(refined_segment_feat), dim=1)
+                elif self.args.adapter_objective == 'step_regression':
+                    if self.adapter_fix_hidden_dim_layer:
+                        refined_segment_feat = self.adapter_fix_hidden_dim_layer(refined_segment_feat)
+                    return refined_segment_feat
+                else:
+                    self.logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
+                        __name__, __file__))
+                    os._exit(0)
         else:
             return refined_segment_feat
         

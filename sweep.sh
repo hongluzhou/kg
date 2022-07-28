@@ -1,1 +1,0 @@
-wandb sweep sweep.yaml  

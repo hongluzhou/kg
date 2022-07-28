@@ -328,5 +328,7 @@ if __name__ == '__main__':
         main_train_task_head(args)
         
     else:
-        print("Wrong command mode!")
+        print('The mode is not implemented!\nFunc: {}\nFile:{}'.format(
+            __name__, __file__))
+        
         os._exit(0)

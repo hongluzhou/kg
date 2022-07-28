@@ -111,16 +111,8 @@ def main_train_adapter(args):
     
     
     # Define adapter criterion
-    if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
-        adapter_criterion = torch.nn.CrossEntropyLoss().to(args.device)
-    elif args.adapter_objective in {'step_kl_distribution_matching'}:
+    if args.adapter_objective in {'ours_Q1'}:
         adapter_criterion = torch.nn.KLDivLoss(reduction=args.adapter_kl_reduction).to(args.device)
-    elif args.adapter_objective in {'step_regression'}:
-        if args.step_regression_func == 'mse':
-            adapter_criterion = torch.nn.MSELoss(
-                reduction=args.step_regression_func_mse_reductin).to(args.device)  # MSE loss
-        else:
-            adapter_criterion = losses.StepRegressionNCELoss(args, logger).to(args.device)  # NCE loss
     else:
         logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(
             __name__, __file__))
@@ -390,11 +382,7 @@ def train_adapter_for_one_epoch(
     criterion.train() 
     
     for i, batch_data in enumerate(train_loader):
-        if args.adapter_objective == 'step_regression' and args.step_regression_func == 'mse':
-            segment_video_feat, targets_clsids, pseudo_targets = batch_data
-            targets_clsids = targets_clsids.to(args.device)
-            targets_thisbatch = pseudo_targets.to(args.device)
-        else:
+        if args.adapter_objective in 'ours_Q1':
             segment_video_feat, pseudo_targets = batch_data
             targets_thisbatch = pseudo_targets.to(args.device)
             
@@ -409,23 +397,9 @@ def train_adapter_for_one_epoch(
             preds_thisbatch = model(segment_video_feat)
         
         # measure accuracy and record loss 
-        if args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg'}:
-            
-            loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
-            acc_thisbatch = accuracy(preds_thisbatch, targets_thisbatch, topk=(1,))
-        
-        elif args.adapter_objective in {'step_kl_distribution_matching'}:
+        if args.adapter_objective in {'ours_Q1'}:
             loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
             acc_thisbatch = accuracy(preds_thisbatch, torch.argmax(targets_thisbatch, dim=1), topk=(1,))
-        
-        elif args.adapter_objective == 'step_regression':
-            if args.step_regression_func == 'mse':
-                loss_thisbatch = criterion(preds_thisbatch, targets_thisbatch) 
-                segment_step_sim_scores = torch.matmul(preds_thisbatch, targets_thisbatch.t())  
-                acc_thisbatch = accuracy(segment_step_sim_scores, targets_clsids, topk=(1,))
-            else:
-                loss_thisbatch, segment_step_sim_scores = criterion(preds_thisbatch, targets_thisbatch) 
-                acc_thisbatch = accuracy(segment_step_sim_scores, targets_thisbatch, topk=(1,))
         
         else:
             logger.info('The adapter_objective is not implemented!\nFunc: {}\nFile:{}'.format(

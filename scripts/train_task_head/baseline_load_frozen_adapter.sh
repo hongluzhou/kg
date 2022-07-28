@@ -1,1 +1,1 @@
-time CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python engines/train_task_head/main_load_frozen_adapter.py train_task_head --cfg configs/baseline_load_frozen_adapter.yml --checkpoint output_checkpoints/baseline_kg-no-edges-bag-of-steps/Adapter-2022-07-15T05-20-20Z_e116.pth --use_wandb 1
+time CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python engines/train_task_head/main_load_frozen_adapter.py train_task_head --cfg configs/train_task_head_load_frozon_adapters.yml --checkpoint /export/home/outputs/ginst/output_checkpoints/ours/Adapter-2022-07-28T04-31-17Z_e30.pth --use_wandb 1

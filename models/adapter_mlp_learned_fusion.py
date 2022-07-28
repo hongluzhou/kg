@@ -21,20 +21,20 @@ class Adapter(nn.Module):
         self.args = args
         self.logger = logger
         
-        assert self.args.adapter_refined_feat_dim == self.args.model_video_pretrained_dim
+        assert self.args.adapter_refined_feat_dim == self.args.s3d_hidden_dim
         
         adapter_layers = []
         adapter_layers.append(
-            nn.Linear(args.model_video_pretrained_dim, args.bottleneck_dim))
+            nn.Linear(args.s3d_hidden_dim, args.bottleneck_dim))
         adapter_layers.append(
             nn.ReLU(inplace=True))
         adapter_layers.append(
             nn.Linear(args.bottleneck_dim, args.adapter_refined_feat_dim))
         self.adapter = nn.Sequential(*adapter_layers)
         
-        self.fusion = build_mlp(input_dim=args.adapter_refined_feat_dim + args.model_video_pretrained_dim, 
-                hidden_dims=[int((args.adapter_refined_feat_dim + args.model_video_pretrained_dim)/1.5),
-                             int((args.adapter_refined_feat_dim + args.model_video_pretrained_dim)//2)], 
+        self.fusion = build_mlp(input_dim=args.adapter_refined_feat_dim + args.s3d_hidden_dim, 
+                hidden_dims=[int((args.adapter_refined_feat_dim + args.s3d_hidden_dim)/1.5),
+                             int((args.adapter_refined_feat_dim + args.s3d_hidden_dim)//2)], 
                 output_dim=args.adapter_refined_feat_dim)
         
         if self.args.adapter_objective in {'step_cls_with_bg', 'step_cls_without_bg', 
